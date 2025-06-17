@@ -7,7 +7,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import opts_egtea as opts
-
 import time
 import h5py
 from tqdm import tqdm
@@ -38,9 +37,7 @@ def train_one_epoch(opt, model, train_dataset, optimizer, warmup=False):
             for g in optimizer.param_groups:
                 g['lr'] = n_iter * (opt['lr']) / total_iter
         
-        # act_cls, act_reg, snip_cls = model(input_data.cuda())
-        act_cls, act_reg, snip_cls = model(input_data.float().cuda())
-
+        act_cls, act_reg, snip_cls = model(input_data.cuda())
 
         
         act_cls.register_hook(partial(cls_loss.collect_grad, cls_label))
@@ -159,8 +156,7 @@ def eval_frame(opt, model, dataset):
     epoch_cost_reg = 0   
     
     for n_iter,(input_data,cls_label,reg_label, _) in enumerate(tqdm(test_loader)):
-        # act_cls, act_reg, _ = model(input_data.cuda())
-        act_cls, act_reg, _ = model(input_data.float().cuda())
+        act_cls, act_reg, _ = model(input_data.cuda())
         cost_reg = 0
         cost_cls = 0
         
@@ -236,10 +232,10 @@ def eval_map_nms(opt, dataset, output_cls, output_reg, labels_cls, labels_reg):
                 for cidx in range(0,len(cls)):
                     label=cls[cidx]
                     tmp_dict={}
-                    tmp_dict["segment"] = [float(st*frame_to_time/100.0), float(ed*frame_to_time/100.0)]
-                    tmp_dict["score"]= float(cls_anc[anc_idx][label])  # Convert to Python float
+                    tmp_dict["segment"] = [st*frame_to_time/100.0, ed*frame_to_time/100.0]
+                    tmp_dict["score"]= cls_anc[anc_idx][label]*1.0
                     tmp_dict["label"]=dataset.label_name[label]
-                    tmp_dict["gentime"]= float(idx*frame_to_time/100.0)
+                    tmp_dict["gentime"]= idx*frame_to_time/100.0
                     proposal_anc_dict.append(tmp_dict)
                 
             proposal_dict+=proposal_anc_dict
@@ -291,10 +287,10 @@ def eval_map_supnet(opt, dataset, output_cls, output_reg, labels_cls, labels_reg
                 for cidx in range(0,len(cls)):
                     label=cls[cidx]
                     tmp_dict={}
-                    tmp_dict["segment"] = [float(st*frame_to_time/100.0), float(ed*frame_to_time/100.0)]
-                    tmp_dict["score"]= float(cls_anc[anc_idx][label])  # Convert to Python float
+                    tmp_dict["segment"] = [st*frame_to_time/100.0, ed*frame_to_time/100.0]
+                    tmp_dict["score"]= cls_anc[anc_idx][label]*1.0
                     tmp_dict["label"]=dataset.label_name[label]
-                    tmp_dict["gentime"]= float(idx*frame_to_time/100.0)
+                    tmp_dict["gentime"]= idx*frame_to_time/100.0
                     proposal_anc_dict.append(tmp_dict)
                           
             proposal_anc_dict = non_max_suppression(proposal_anc_dict, overlapThresh=opt['soft_nms'])  
@@ -465,10 +461,10 @@ def test_online(opt):
                 for cidx in range(0,len(cls)):
                     label=cls[cidx]
                     tmp_dict={}
-                    tmp_dict["segment"] = [float(st*frame_to_time/100.0), float(ed*frame_to_time/100.0)]
-                    tmp_dict["score"]= float(cls_anc[anc_idx][label])  # Convert to Python float
+                    tmp_dict["segment"] = [st*frame_to_time/100.0, ed*frame_to_time/100.0]
+                    tmp_dict["score"]= cls_anc[anc_idx][label]*1.0
                     tmp_dict["label"]=dataset.label_name[label]
-                    tmp_dict["gentime"]= float(idx*frame_to_time/100.0)
+                    tmp_dict["gentime"]= idx*frame_to_time/100.0
                     proposal_anc_dict.append(tmp_dict)
                           
             proposal_anc_dict = non_max_suppression(proposal_anc_dict, overlapThresh=opt['soft_nms'])  

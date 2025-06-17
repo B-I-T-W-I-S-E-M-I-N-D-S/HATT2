@@ -166,10 +166,8 @@ class MYNET(torch.nn.Module):
         self.softmaxd1 = nn.Softmax(dim=-1)
 
     def forward(self, inputs):
-        # base_x_rgb = self.feature_reduction_rgb(inputs[:,:,:self.n_feature//2])
-        # base_x_flow = self.feature_reduction_flow(inputs[:,:,self.n_feature//2:])
-        base_x_rgb = self.feature_reduction_rgb(inputs[:,:,:self.n_feature//2].float())
-        base_x_flow = self.feature_reduction_flow(inputs[:,:,self.n_feature//2:].float())
+        base_x_rgb = self.feature_reduction_rgb(inputs[:,:,:self.n_feature//2])
+        base_x_flow = self.feature_reduction_flow(inputs[:,:,self.n_feature//2:])
         base_x = torch.cat([base_x_rgb,base_x_flow],dim=-1)
         
         base_x = base_x.permute([1,0,2])# seq_len x batch x featsize x 
