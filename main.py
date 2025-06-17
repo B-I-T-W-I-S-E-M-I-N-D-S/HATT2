@@ -29,8 +29,8 @@ def train_one_epoch(opt, model, train_dataset, optimizer, warmup=False):
     epoch_cost_snip = 0
     
     total_iter = len(train_dataset)//opt['batch_size']
-    cls_loss = MultiCrossEntropyLoss(focal=True)
-    snip_loss = MultiCrossEntropyLoss(focal=True)
+    cls_loss = MultiCrossEntropyLoss(num_classes=opt['num_of_class'],focal=True)
+    snip_loss = MultiCrossEntropyLoss(num_classes=opt['num_of_class'],focal=True)
     for n_iter,(input_data,cls_label,reg_label,snip_label) in enumerate(tqdm(train_loader)):
 
         if warmup:
@@ -95,6 +95,9 @@ def train(opt):
     optimizer = optim.Adam([{'params': model.history_unit.parameters(), 'lr': 1e-6}, {'params': rest_of_model_params}],lr=opt["lr"],weight_decay = opt["weight_decay"])  
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer,step_size = opt["lr_step"])
     
+    opt["split"] = "train"
+
+
     train_dataset = VideoDataSet(opt,subset="train")      
     test_dataset = VideoDataSet(opt,subset=opt['inference_subset'])
     

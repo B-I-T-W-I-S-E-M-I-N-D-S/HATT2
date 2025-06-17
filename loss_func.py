@@ -6,9 +6,9 @@ import torch.distributed as dist
 from functools import partial
         
 class MultiCrossEntropyLoss(nn.Module):
-    def __init__(self, focal=False, weight=None, reduce=True):
+    def __init__(self, num_classes, focal=False, weight=None, reduce=True):
         super(MultiCrossEntropyLoss, self).__init__()
-        self.num_classes = 23
+        self.num_classes = num_classes
         self.focal = focal
         self.weight= weight
         self.reduce = reduce
@@ -68,7 +68,7 @@ def cls_loss_func(y,output, use_focal=False, weight=None, reduce=True):
     y = y.float().cuda()
     if weight is not None:
         weight = weight.cuda()
-    loss_func = MultiCrossEntropyLoss(focal=True, weight=weight, reduce=reduce)
+    loss_func = MultiCrossEntropyLoss(num_classes=y.size(-1),focal=True, weight=weight, reduce=reduce)
     
     y=y.reshape(-1,y.size(-1))
     output=output.reshape(-1,output.size(-1))
