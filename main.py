@@ -196,9 +196,9 @@ def eval_frame(opt, model, dataset):
         output_cls[video_name]=np.stack(output_cls[video_name], axis=0)
         output_reg[video_name]=np.stack(output_reg[video_name], axis=0)
     
-    cls_loss=epoch_cost_cls/n_iter
-    reg_loss=epoch_cost_reg/n_iter
-    tot_loss=epoch_cost/n_iter
+    cls_loss=epoch_cost_cls/(n_iter+1)  # Fixed division by zero
+    reg_loss=epoch_cost_reg/(n_iter+1)  # Fixed division by zero
+    tot_loss=epoch_cost/(n_iter+1)      # Fixed division by zero
      
     return cls_loss, reg_loss, tot_loss, output_cls, output_reg, labels_cls, labels_reg, working_time, total_frames
 
@@ -211,6 +211,10 @@ def eval_map_nms(opt, dataset, output_cls, output_reg, labels_cls, labels_reg):
     unit_size = opt['segment_size']
     threshold=opt['threshold']
     anchors=opt['anchors']
+    
+    # Debug print to check label_name length
+    print(f"Number of classes: {num_class}, Label name length: {len(dataset.label_name)}")
+    print(f"Label names: {dataset.label_name}")
                                              
     for video_name in dataset.video_list:
         duration = dataset.video_len[video_name]
@@ -223,7 +227,9 @@ def eval_map_nms(opt, dataset, output_cls, output_reg, labels_cls, labels_reg):
             
             proposal_anc_dict=[]
             for anc_idx in range(0,len(anchors)):
-                cls = np.argwhere(cls_anc[anc_idx][:-1]>opt['threshold']).reshape(-1)
+                # Make sure we don't go beyond the available classes
+                max_class_idx = min(cls_anc[anc_idx].shape[0] - 1, len(dataset.label_name))
+                cls = np.argwhere(cls_anc[anc_idx][:max_class_idx]>opt['threshold']).reshape(-1)
                 
                 if len(cls) == 0:
                     continue
@@ -234,11 +240,16 @@ def eval_map_nms(opt, dataset, output_cls, output_reg, labels_cls, labels_reg):
                 
                 for cidx in range(0,len(cls)):
                     label=cls[cidx]
+                    # Additional safety check
+                    if label >= len(dataset.label_name):
+                        print(f"Warning: Label index {label} is out of range. Max valid index is {len(dataset.label_name)-1}")
+                        continue
+                        
                     tmp_dict={}
-                    tmp_dict["segment"] = [st*frame_to_time/100.0, ed*frame_to_time/100.0]
-                    tmp_dict["score"]= cls_anc[anc_idx][label]*1.0
+                    tmp_dict["segment"] = [float(st*frame_to_time/100.0), float(ed*frame_to_time/100.0)]
+                    tmp_dict["score"]= float(cls_anc[anc_idx][label])
                     tmp_dict["label"]=dataset.label_name[label]
-                    tmp_dict["gentime"]= idx*frame_to_time/100.0
+                    tmp_dict["gentime"]= float(idx*frame_to_time/100.0)
                     proposal_anc_dict.append(tmp_dict)
                 
             proposal_dict+=proposal_anc_dict
@@ -278,7 +289,9 @@ def eval_map_supnet(opt, dataset, output_cls, output_reg, labels_cls, labels_reg
             
             proposal_anc_dict=[]
             for anc_idx in range(0,len(anchors)):
-                cls = np.argwhere(cls_anc[anc_idx][:-1]>opt['threshold']).reshape(-1)
+                # Apply the same fix here
+                max_class_idx = min(cls_anc[anc_idx].shape[0] - 1, len(dataset.label_name))
+                cls = np.argwhere(cls_anc[anc_idx][:max_class_idx]>opt['threshold']).reshape(-1)
                 
                 if len(cls) == 0:
                     continue
@@ -289,11 +302,15 @@ def eval_map_supnet(opt, dataset, output_cls, output_reg, labels_cls, labels_reg
                 
                 for cidx in range(0,len(cls)):
                     label=cls[cidx]
+                    # Additional safety check
+                    if label >= len(dataset.label_name):
+                        continue
+                        
                     tmp_dict={}
-                    tmp_dict["segment"] = [st*frame_to_time/100.0, ed*frame_to_time/100.0]
-                    tmp_dict["score"]= cls_anc[anc_idx][label]*1.0
+                    tmp_dict["segment"] = [float(st*frame_to_time/100.0), float(ed*frame_to_time/100.0)]
+                    tmp_dict["score"]= float(cls_anc[anc_idx][label])
                     tmp_dict["label"]=dataset.label_name[label]
-                    tmp_dict["gentime"]= idx*frame_to_time/100.0
+                    tmp_dict["gentime"]= float(idx*frame_to_time/100.0)
                     proposal_anc_dict.append(tmp_dict)
                           
             proposal_anc_dict = non_max_suppression(proposal_anc_dict, overlapThresh=opt['soft_nms'])  
@@ -452,7 +469,9 @@ def test_online(opt):
             
             proposal_anc_dict=[]
             for anc_idx in range(0,len(anchors)):
-                cls = np.argwhere(cls_anc[anc_idx][:-1]>opt['threshold']).reshape(-1)
+                # Apply the same fix here
+                max_class_idx = min(cls_anc[anc_idx].shape[0] - 1, len(dataset.label_name))
+                cls = np.argwhere(cls_anc[anc_idx][:max_class_idx]>opt['threshold']).reshape(-1)
                 
                 if len(cls) == 0:
                     continue
@@ -463,11 +482,15 @@ def test_online(opt):
                 
                 for cidx in range(0,len(cls)):
                     label=cls[cidx]
+                    # Additional safety check
+                    if label >= len(dataset.label_name):
+                        continue
+                        
                     tmp_dict={}
-                    tmp_dict["segment"] = [st*frame_to_time/100.0, ed*frame_to_time/100.0]
-                    tmp_dict["score"]= cls_anc[anc_idx][label]*1.0
+                    tmp_dict["segment"] = [float(st*frame_to_time/100.0), float(ed*frame_to_time/100.0)]
+                    tmp_dict["score"]= float(cls_anc[anc_idx][label])
                     tmp_dict["label"]=dataset.label_name[label]
-                    tmp_dict["gentime"]= idx*frame_to_time/100.0
+                    tmp_dict["gentime"]= float(idx*frame_to_time/100.0)
                     proposal_anc_dict.append(tmp_dict)
                           
             proposal_anc_dict = non_max_suppression(proposal_anc_dict, overlapThresh=opt['soft_nms'])  
@@ -537,5 +560,3 @@ if __name__ == '__main__':
     opt['anchors'] = [int(item) for item in opt['anchors'].split(',')]  
            
     main(opt)
-    while(opt['wterm']):
-        pass

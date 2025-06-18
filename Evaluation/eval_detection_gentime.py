@@ -159,7 +159,12 @@ class ANETdetection(object):
                 
         sum_tdiff = np.sum(tdiff, axis=1)
         total_tp = np.sum(cnt_tp, axis=1)
-        final_tdiff = sum_tdiff/total_tp
+        # Around line 162 in eval_detection_gentime.py
+        if total_tp.sum() > 0:
+            final_tdiff = sum_tdiff/total_tp
+        else:
+            final_tdiff = np.zeros_like(sum_tdiff)
+
         
         return ap, final_tdiff
 
