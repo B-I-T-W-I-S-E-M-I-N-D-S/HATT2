@@ -31,6 +31,7 @@ def train_one_epoch(opt, model, train_dataset, optimizer, warmup=False):
     total_iter = len(train_dataset)//opt['batch_size']
     cls_loss = MultiCrossEntropyLoss(num_classes=opt['num_of_class'],focal=True)
     snip_loss = MultiCrossEntropyLoss(num_classes=opt['num_of_class'],focal=True)
+    
     for n_iter,(input_data,cls_label,reg_label,snip_label) in enumerate(tqdm(train_loader)):
 
         if warmup:
@@ -39,35 +40,59 @@ def train_one_epoch(opt, model, train_dataset, optimizer, warmup=False):
         
         act_cls, act_reg, snip_cls = model(input_data.cuda())
 
+        # REMOVED PROBLEMATIC GRADIENT HOOKS - These were causing the NaN issue
+        # act_cls.register_hook(partial(cls_loss.collect_grad, cls_label))
+        # snip_cls.register_hook(partial(snip_loss.collect_grad, snip_label))
         
-        act_cls.register_hook(partial(cls_loss.collect_grad, cls_label))
-        snip_cls.register_hook(partial(snip_loss.collect_grad, snip_label))
+        # Calculate individual losses
+        cost_cls = cls_loss_func_(cls_loss, cls_label, act_cls)
+        cost_reg = regress_loss_func(reg_label, act_reg)
+        cost_snip = cls_loss_func_(snip_loss, snip_label, snip_cls)
         
-        cost_reg = 0
-        cost_cls = 0
-
-        loss = cls_loss_func_(cls_loss, cls_label,act_cls)
-        cost_cls = loss
+        # Check for NaN in individual losses before combining
+        if torch.isnan(cost_cls) or torch.isinf(cost_cls):
+            print(f"NaN/Inf detected in cls loss at iter {n_iter}")
+            continue
+        if torch.isnan(cost_reg) or torch.isinf(cost_reg):
+            print(f"NaN/Inf detected in reg loss at iter {n_iter}")
+            continue
+        if torch.isnan(cost_snip) or torch.isinf(cost_snip):
+            print(f"NaN/Inf detected in snip loss at iter {n_iter}")
+            continue
             
-        epoch_cost_cls+= cost_cls.detach().cpu().numpy()    
-               
-        loss = regress_loss_func(reg_label,act_reg)
-        cost_reg = loss  
-        epoch_cost_reg += cost_reg.detach().cpu().numpy()   
-
-        loss = cls_loss_func_(snip_loss, snip_label,snip_cls)
-        cost_snip = loss
-
-            
-        epoch_cost_snip+= cost_snip.detach().cpu().numpy() 
+        # Combine losses with weights
+        cost = opt['alpha'] * cost_cls + opt['beta'] * cost_reg + opt['gamma'] * cost_snip
         
-        cost= opt['alpha']*cost_cls +opt['beta']*cost_reg + opt['gamma']*cost_snip    
+        # Final NaN check
+        if torch.isnan(cost) or torch.isinf(cost):
+            print(f"NaN/Inf detected in total loss at iter {n_iter}")
+            continue
                 
-        epoch_cost += cost.detach().cpu().numpy() 
+        # Accumulate costs for logging
+        epoch_cost_cls += cost_cls.detach().cpu().numpy()
+        epoch_cost_reg += cost_reg.detach().cpu().numpy()
+        epoch_cost_snip += cost_snip.detach().cpu().numpy()
+        epoch_cost += cost.detach().cpu().numpy()
 
+        # Backpropagation with gradient clipping
         optimizer.zero_grad()
         cost.backward()
-        optimizer.step()   
+        
+        # CRITICAL: Add gradient clipping to prevent explosion
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+        
+        # Check for NaN gradients
+        has_nan_grad = False
+        for param in model.parameters():
+            if param.grad is not None and (torch.isnan(param.grad).any() or torch.isinf(param.grad).any()):
+                has_nan_grad = True
+                break
+        
+        if has_nan_grad:
+            print(f"NaN/Inf gradients detected at iter {n_iter}, skipping update")
+            continue
+            
+        optimizer.step()
                 
     return n_iter, epoch_cost, epoch_cost_cls, epoch_cost_reg, epoch_cost_snip
 
