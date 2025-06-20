@@ -6,7 +6,7 @@ import torch.nn.parallel
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
-import opts_egtea as opts
+import opts_thumos as opts
 import time
 import h5py
 from iou_utils import *
@@ -206,6 +206,8 @@ def make_dataset(opt):
     base_dict=checkpoint['state_dict']
     model.load_state_dict(base_dict)
     model.eval()
+    
+    opt["split"] = "test"
     
     dataset = VideoDataSet(opt,subset=opt['inference_subset'])
     
