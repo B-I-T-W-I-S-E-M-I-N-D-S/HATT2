@@ -399,6 +399,7 @@ def test(opt):
     model.load_state_dict(base_dict)
     model.eval()
     
+    opt["split"] = "test"
     dataset = VideoDataSet(opt,subset=opt['inference_subset'])
     
     cls_loss, reg_loss, tot_loss, output_cls, output_reg, labels_cls, labels_reg, working_time, total_frames = eval_frame(opt, model,dataset)
